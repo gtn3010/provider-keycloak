@@ -10,3 +10,8 @@ cover.out
 .vscode/
 .idea/
 dev/e2e-broken
+
+# docs build artifacts
+docs/node_modules/
+docs/build/
+docs/.docusaurus/
