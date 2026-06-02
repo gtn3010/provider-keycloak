@@ -15,3 +15,5 @@ dev/e2e-broken
 docs/public/
 docs/resources/_gen/
 docs/.hugo_build.lock
+# ignore compiled binaries
+/provider
