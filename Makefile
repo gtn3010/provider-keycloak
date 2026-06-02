@@ -207,6 +207,19 @@ endif
 
 UPTEST_EXAMPLE_LIST := $(shell grep -v '^\#' cluster/test/cases.txt | paste -sd ',' -)
 
+# Version-conditional test cases
+# Include organization tests only for Keycloak >= 26.6
+# KEYCLOAK_VERSION can be set via environment variable (e.g., from CI matrix)
+KEYCLOAK_VERSION ?=
+MIN_KC_VERSION_ORGS := 26.6
+
+ifneq ($(KEYCLOAK_VERSION),)
+KC_VERSION_GE_ORGS := $(shell printf '%s\n%s' "$(MIN_KC_VERSION_ORGS)" "$(KEYCLOAK_VERSION)" | sort -V | head -n1 | grep -q "$(MIN_KC_VERSION_ORGS)" && echo true || echo false)
+ifeq ($(KC_VERSION_GE_ORGS),true)
+UPTEST_EXAMPLE_LIST := $(UPTEST_EXAMPLE_LIST),$(shell grep -v '^\#' cluster/test/cases-orgs.txt | paste -sd ',' -)
+endif
+endif
+
 # This target requires the following environment variables to be set:
 # - UPTEST_EXAMPLE_LIST, a comma-separated list of examples to test
 #   To ensure the proper functioning of the end-to-end test resource pre-deletion hook, it is crucial to arrange your resources appropriately.

@@ -5,7 +5,7 @@ SCRIPT_DIR=$(cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd)
 
 # Default variable values
 CLUSTER_NAME="fenrir-1"
-KEYCLOAK_VERSION="26.4.4"
+KEYCLOAK_VERSION="26.6.2"
 skipmetallb=false
 runcloudproviderkind=false
 uselocalprovider=false

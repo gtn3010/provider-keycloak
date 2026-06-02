@@ -368,6 +368,28 @@ export KIND_CLUSTER_NAME=fenrir-1
 make uptest
 ```
 
+### Version-Conditional Tests
+
+Some test cases are only valid for certain Keycloak versions. To include version-specific tests, pass `KEYCLOAK_VERSION` when running tests:
+
+```console
+make uptest KEYCLOAK_VERSION=26.6.2
+```
+
+The following version-conditional test sets are available:
+
+| Test Set | Minimum KC Version | Cases File |
+|----------|-------------------|------------|
+| Organizations | 26.6 | `cluster/test/cases-orgs.txt` |
+
+To add new version-conditional tests:
+
+1. Create test manifests in a subdirectory under `dev/demos/` (e.g., `dev/demos/orgs/`)
+2. Create a cases file (e.g., `cluster/test/cases-<feature>.txt`) listing the test manifests
+3. Add an init manifest (`000-init.yaml`) for test prerequisites
+4. Add the version comparison logic to the `Makefile` following the existing pattern
+5. Update `cluster/test/setup.sh` to apply the init manifest conditionally
+
 ### How Tests are working
 
 Render Only

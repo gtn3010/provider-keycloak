@@ -252,6 +252,8 @@ jobs:
       fail-fast: false
       matrix:
         keycloak-version:
+          - '26.6.2'
+          - '26.5.1'
           - '26.4.4'
           - '26.3.5'
           - '26.2.5'
@@ -314,10 +316,12 @@ jobs:
         id: e2eTests
         continue-on-error: true
         shell: bash
+        env:
+          KEYCLOAK_VERSION: ${{ matrix.keycloak-version }}
         run:
           #!/bin/bash
           set -o pipefail;
-          make uptest | tee logs/uptest.log;
+          make uptest KEYCLOAK_VERSION=${{ matrix.keycloak-version }} | tee logs/uptest.log;
           exit $?;
 
       - name: Collect logs
