@@ -1,5 +1,6 @@
 # Kubernetes Federated Client - Uses federated-jwt client authenticator
 # This client authenticates using Kubernetes service account tokens via the K8s identity provider.
+# The client references the K8s identity provider alias and accepts tokens from the test service account.
 # See: https://www.keycloak.org/2026/01/federated-client-authentication#_kubernetes_service_accounts
 apiVersion: openidclient.keycloak.crossplane.io/v1alpha1
 kind: Client
@@ -20,6 +21,6 @@ spec:
     serviceAccountsEnabled: true
     extraConfig:
       jwt.credential.issuer: "k8s-federated"
-      jwt.credential.sub: "system:serviceaccount:default:default"
+      jwt.credential.sub: "system:serviceaccount:default:k8s-federated-test-sa"
   providerConfigRef:
     name: "keycloak-provider-config"

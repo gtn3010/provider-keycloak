@@ -11,11 +11,16 @@ spec:
   forProvider:
     alias: k8s-federated
     displayName: "Kubernetes Federated Identity"
-    issuer: https://kubernetes.default.svc.cluster.local
+    issuer: https://kubernetes.default.svc
     enabled: true
     storeToken: false
+    trustEmail: true
     realmRef:
       name: "orgs"
+      policy:
+        resolve: Always
+    organizationIdRef:
+      name: example
       policy:
         resolve: Always
   providerConfigRef:
