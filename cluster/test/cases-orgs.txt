@@ -1,6 +1,8 @@
 # Organization-related test cases
 # These tests require Keycloak >= 26.6 (organizations feature)
 # find ./dev/demos/orgs -name '*yaml' -a '!' -name '000-init.yaml' | sort -r
+./dev/demos/orgs/031-k8s-federated-client.yaml
+./dev/demos/orgs/030-k8s-federated-identity-provider.yaml
 ./dev/demos/orgs/020-user.yaml
 ./dev/demos/orgs/010-oidc-identity-provider.yaml
 ./dev/demos/orgs/002-org.yaml

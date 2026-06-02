@@ -1,0 +1,22 @@
+# Kubernetes Identity Provider - Self-contained test for K8s federated identity
+# This test uses the kind cluster's own Kubernetes API server as the OIDC issuer.
+# See: https://www.keycloak.org/docs/latest/server_admin/index.html#_identity_broker_kubernetes
+# See: https://www.keycloak.org/2026/01/federated-client-authentication#_kubernetes_service_accounts
+apiVersion: identityprovider.keycloak.crossplane.io/v1alpha1
+kind: KubernetesIdentityProvider
+metadata:
+  name: k8s-federated-idp
+spec:
+  deletionPolicy: Delete
+  forProvider:
+    alias: k8s-federated
+    displayName: "Kubernetes Federated Identity"
+    issuer: https://kubernetes.default.svc.cluster.local
+    enabled: true
+    storeToken: false
+    realmRef:
+      name: "orgs"
+      policy:
+        resolve: Always
+  providerConfigRef:
+    name: "keycloak-provider-config"
