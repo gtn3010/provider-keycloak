@@ -12,6 +12,6 @@ cover.out
 dev/e2e-broken
 
 # docs build artifacts
-docs/node_modules/
-docs/build/
-docs/.docusaurus/
+docs/public/
+docs/resources/_gen/
+docs/.hugo_build.lock
