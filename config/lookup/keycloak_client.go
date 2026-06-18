@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/crossplane/crossplane-runtime/v2/pkg/errors"
 	"github.com/crossplane/upjet/v2/pkg/terraform"
 	"github.com/keycloak/terraform-provider-keycloak/keycloak"
 
+	"github.com/crossplane-contrib/provider-keycloak/internal/clients"
 	"github.com/crossplane-contrib/provider-keycloak/internal/keycloaksession"
 )
 
@@ -29,6 +31,7 @@ type Component struct {
 type cachedKeycloakClient struct {
 	client *keycloak.KeycloakClient
 	config map[string]any
+	expiry time.Time
 }
 
 // keycloakClientCache caches *keycloak.KeycloakClient instances keyed
@@ -46,15 +49,22 @@ func newKeycloakClient(ctx context.Context, terraformProviderConfig map[string]a
 
 	cacheKey := keycloaksession.ConfigCacheKey(c)
 	if cached, ok := keycloakClientCache.Load(cacheKey); ok {
-		return cached.(*cachedKeycloakClient).client, nil
+		if cm := cached.(*cachedKeycloakClient); cm.expiry.After(time.Now()) {
+			// fmt.Println(time.Now(), "GetIDFn: Cache existed and not expired. Reuse cached credential.")
+			return cm.client, nil
+		}
 	}
 
 	// Not cached yet – create under a mutex so concurrent lookup calls
 	// for the same configuration only log in once.
 	keycloakClientCacheMu.Lock()
 	defer keycloakClientCacheMu.Unlock()
+	fmt.Println(time.Now(), "GetIDFn: Locking in order to update credentials")
 	if cached, ok := keycloakClientCache.Load(cacheKey); ok {
-		return cached.(*cachedKeycloakClient).client, nil
+		if cm := cached.(*cachedKeycloakClient); cm.expiry.After(time.Now()) {
+			fmt.Println(time.Now(), "GetIDFn: Return existed cached credential when locking.")
+			return cm.client, nil
+		}
 	}
 
 	url := tryGetString(c, "url", "")
@@ -108,11 +118,18 @@ func newKeycloakClient(ctx context.Context, terraformProviderConfig map[string]a
 		return nil, err
 	}
 
+	fmt.Println(time.Now(), "GetIDFn: Updating new credential in the cache.")
+	cacheTTL, err := clients.SetupCacheTTL()
+	if err != nil {
+		fmt.Println(time.Now(), "GetIDFn: Failed to load cache ttl time for keycloak cred from env variables (Default set to 30mins) ", err)
+	}
+
 	// Store only the fields needed for logout to reduce sensitive
 	// credential exposure in process memory.
 	keycloakClientCache.Store(cacheKey, &cachedKeycloakClient{
 		client: keycloakClient,
 		config: keycloaksession.LogoutConfig(c),
+		expiry: time.Now().Add(cacheTTL),
 	})
 	return keycloakClient, nil
 }

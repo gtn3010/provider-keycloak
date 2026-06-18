@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
+	"os"
 
 	terraformSDK "github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/keycloak/terraform-provider-keycloak/keycloak"
@@ -32,6 +34,7 @@ import (
 	namespacedv1beta1 "github.com/crossplane-contrib/provider-keycloak/apis/namespaced/v1beta1"
 	"github.com/crossplane-contrib/provider-keycloak/internal/clients/stalerefs"
 	"github.com/crossplane-contrib/provider-keycloak/internal/keycloaksession"
+	"github.com/crossplane/crossplane-runtime/v2/pkg/logging"
 )
 
 const (
@@ -48,6 +51,7 @@ const (
 	errInvalidURL                   = "invalid url value in credentials secret"
 	errInvalidAdminURL              = "invalid admin_url value in credentials secret"
 	errInvalidBasePath              = "invalid base_path value in credentials secret"
+	DefaultTfSetupCacheTTL          = time.Second * 800
 )
 
 // cachedMeta holds the Terraform provider meta alongside the
@@ -56,6 +60,7 @@ const (
 type cachedMeta struct {
 	meta   interface{}
 	config map[string]any
+	expiry time.Time
 }
 
 // metaCache caches the configured Terraform provider meta (keycloak
@@ -100,10 +105,23 @@ var optionalKeycloakConfigKeys = []string{
 	"jwt_token_file",
 }
 
+func SetupCacheTTL() (time.Duration, error) {
+	ttl := os.Getenv("CACHE_KC_CRED_TF_SETUP_TTL_SECOND")
+	ttlSec := DefaultTfSetupCacheTTL
+	if ttl != "" {
+		ttlInt, err := strconv.Atoi(ttl)
+		if err != nil {
+			return ttlSec, errors.New("TF_SETUP_CACHE_KC_CRED_TTL_SECOND only accepts type int")
+		}
+		ttlSec = time.Duration(ttlInt) * time.Second
+	}
+	return ttlSec, nil
+}
+
 // TerraformSetupBuilder builds Terraform a terraform.SetupFn function which
 // returns Terraform provider setup configuration
 // nolint: gocyclo
-func TerraformSetupBuilder() terraform.SetupFn {
+func TerraformSetupBuilder(l logging.Logger) terraform.SetupFn {
 	return func(ctx context.Context, client client.Client, mg resource.Managed) (terraform.Setup, error) {
 		ps := terraform.Setup{}
 
@@ -150,16 +168,21 @@ func TerraformSetupBuilder() terraform.SetupFn {
 		// every reconciliation.
 		cacheKey := keycloaksession.ConfigCacheKey(ps.Configuration)
 		if cached, ok := metaCache.Load(cacheKey); ok {
-			ps.Meta = cached.(*cachedMeta).meta
-			return ps, nil
+			if cm := cached.(*cachedMeta); cm.expiry.After(time.Now()) {
+				l.Info("Cache existed and not expired. Reuse cached credential.")
+				ps.Meta = cached.(*cachedMeta).meta
+				return ps, nil
+			}
 		}
 
 		// Not cached yet – create the client under a mutex so that
 		// concurrent reconciliations for the same configuration only
 		// log in once.
+		l.Debug("Locking in order to update credentials")
 		metaCacheMu.Lock()
 		defer metaCacheMu.Unlock()
 		if cached, ok := metaCache.Load(cacheKey); ok {
+			l.Debug("Return existed cached credential when locking.")
 			ps.Meta = cached.(*cachedMeta).meta
 			return ps, nil
 		}
@@ -168,11 +191,18 @@ func TerraformSetupBuilder() terraform.SetupFn {
 			return ps, errors.Wrap(err, "failed to configure the no-fork client")
 		}
 
+		l.Debug("Updating new credential in the cache.")
+		cacheTTL, err := SetupCacheTTL()
+		if err != nil {
+			l.Info("Failed to load cache ttl time for keycloak cred from env variables (Default set to 30mins) ", err)
+		}
+
 		// Store only the fields needed for logout to reduce sensitive
 		// credential exposure in process memory.
 		metaCache.Store(cacheKey, &cachedMeta{
 			meta:   ps.Meta,
 			config: keycloaksession.LogoutConfig(ps.Configuration),
+			expiry: time.Now().Add(cacheTTL),
 		})
 		return ps, nil
 	}

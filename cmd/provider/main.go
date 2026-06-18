@@ -192,7 +192,7 @@ func main() {
 			},
 		},
 		Provider:              providerCluster,
-		SetupFn:               clients.TerraformSetupBuilder(),
+		SetupFn:               clients.TerraformSetupBuilder(log),
 		PollJitter:            pollJitter,
 		OperationTrackerStore: tjcontroller.NewOperationStore(log),
 	}
@@ -210,7 +210,7 @@ func main() {
 			},
 		},
 		Provider:              providerNamespaced,
-		SetupFn:               clients.TerraformSetupBuilder(),
+		SetupFn:               clients.TerraformSetupBuilder(log),
 		PollJitter:            pollJitter,
 		OperationTrackerStore: tjcontroller.NewOperationStore(log),
 	}
