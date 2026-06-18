@@ -59,10 +59,11 @@ func newKeycloakClient(ctx context.Context, terraformProviderConfig map[string]a
 	// for the same configuration only log in once.
 	keycloakClientCacheMu.Lock()
 	defer keycloakClientCacheMu.Unlock()
-	fmt.Println(time.Now(), "GetIDFn: Locking in order to update credentials")
+	fmt.Println(time.Now(), "GetIDFn: Locking in order to update credentials. No cred or expired cred.")
 	if cached, ok := keycloakClientCache.Load(cacheKey); ok {
+		fmt.Println(time.Now(), "GetIDFn: Current expiry time")
 		if cm := cached.(*cachedKeycloakClient); cm.expiry.After(time.Now()) {
-			fmt.Println(time.Now(), "GetIDFn: Return existed cached credential when locking.")
+			fmt.Println(time.Now(), "GetIDFn: Return existed cached credential when locking and current expiry time", cm.expiry)
 			return cm.client, nil
 		}
 	}

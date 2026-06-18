@@ -10,11 +10,11 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
-	"os"
 
 	terraformSDK "github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 	"github.com/keycloak/terraform-provider-keycloak/keycloak"
@@ -169,7 +169,7 @@ func TerraformSetupBuilder(l logging.Logger) terraform.SetupFn {
 		cacheKey := keycloaksession.ConfigCacheKey(ps.Configuration)
 		if cached, ok := metaCache.Load(cacheKey); ok {
 			if cm := cached.(*cachedMeta); cm.expiry.After(time.Now()) {
-				l.Info("Cache existed and not expired. Reuse cached credential.")
+				l.Debug("Cache existed and not expired. Reuse cached credential.")
 				ps.Meta = cached.(*cachedMeta).meta
 				return ps, nil
 			}
@@ -178,11 +178,11 @@ func TerraformSetupBuilder(l logging.Logger) terraform.SetupFn {
 		// Not cached yet – create the client under a mutex so that
 		// concurrent reconciliations for the same configuration only
 		// log in once.
-		l.Debug("Locking in order to update credentials")
+		l.Debug("Locking in order to update credentials.")
 		metaCacheMu.Lock()
 		defer metaCacheMu.Unlock()
 		if cached, ok := metaCache.Load(cacheKey); ok {
-			l.Debug("Return existed cached credential when locking.")
+			l.Debug("Return existed cached credential when locking. No cred or expired cred and current expiry time", cached.(*cachedMeta).expiry)
 			ps.Meta = cached.(*cachedMeta).meta
 			return ps, nil
 		}
